@@ -24,7 +24,7 @@ namespace CSVToSQL
             string outputSqlPath = cleanArgs[1];
             string tableName = cleanArgs.Length >= 3 ? cleanArgs[2] : Path.GetFileNameWithoutExtension(inputCsvPath);
 
-            bool ignoreFirstLine = true;
+            bool ignoreFirstLine = false;
             if (cleanArgs.Length >= 4 && bool.TryParse(cleanArgs[3], out bool parsedIgnore))
             {
                 ignoreFirstLine = parsedIgnore;
@@ -34,9 +34,6 @@ namespace CSVToSQL
             {
                 return;
             }
-
-            char separator = ';';
-            string regexPattern = Regex.Escape(separator.ToString()) + "(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)";
 
             Console.WriteLine($"Démarrage pour la table '{tableName}' | Ignorer 1ère ligne : {(ignoreFirstLine ? "Oui" : "Non")}");
 
@@ -55,6 +52,22 @@ namespace CSVToSQL
                     PrintError("Le fichier CSV est vide.");
                     return;
                 }
+
+                char separator = ';'; // Par défaut
+
+                // Si l'utilisateur a passé un 5ème argument (ex: ,) on l'utilise
+                if (cleanArgs.Length >= 5)
+                {
+                    separator = cleanArgs[4][0];
+                }
+                else
+                {
+                    // Petite sécurité intelligente : on cherche seulement sur la PREMIÈRE ligne
+                    // car souvent les en-têtes n'ont pas de virgules dans le texte.
+                    separator = lines[0].Contains(';') ? ';' : ',';
+                }
+
+                string regexPattern = Regex.Escape(separator.ToString()) + "(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)";
 
                 ProcessFile(lines, outputSqlPath, tableName, regexPattern, ignoreFirstLine);
 
@@ -149,9 +162,9 @@ namespace CSVToSQL
         private static void DisplayUsage()
         {
             Console.WriteLine("❌ Erreur : Arguments manquants.");
-            Console.WriteLine("Utilisation : CsvToSql.exe <entree.csv> <sortie.sql> [nom_table] [ignorer_1ere_ligne (true/false)] [-y]");
-            Console.WriteLine("Exemple 1   : CsvToSql.exe employe.csv employe.sql Employes false");
-            Console.WriteLine("Exemple 2   : CsvToSql.exe employe.csv employe.sql Employes false -y");
+            Console.WriteLine("Utilisation : CsvToSql.exe <entree.csv> <sortie.sql> [nom_table] [ignorer_1ere_ligne] [-y]");
+            Console.WriteLine("Défaut : ignorer_1ere_ligne = false");
+            Console.WriteLine("Exemple : CsvToSql.exe data.csv data.sql MaTable true");
         }
 
         private static void PrintError(string message)
